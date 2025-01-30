@@ -412,3 +412,7 @@ print(f'MAE:{mae_mean:.3f}±{mae_sd:.3f}')
 print(f'MSE:{mse_mean:.3f}±{mse_sd:.3f}')
 print(f'r2:{r2_mean:.3f}±{r2_sd:.3f}')
 
+# RMSE:0.874 ± 0.073
+# MAE:0.681 ± 0.062
+# MSE:0.771 ± 0.132
+# r2:0.759 ± 0.041
