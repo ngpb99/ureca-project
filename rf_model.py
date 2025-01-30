@@ -371,7 +371,7 @@ descriptor_type = ['mol_desc', 'morgan_fp', 'rdkit_fp', 'maccs_keys']
 train_data = [mol_desc_train, morgan_fp_train, maccs_keys_train, rdkit_fp_train]
 test_data = [mol_desc_test, morgan_fp_test, maccs_keys_test, rdkit_fp_test]
 best_params = [best_params_moldesc, best_params_morganfp, best_params_maccs, best_params_rdkitfp]
-trained_model_directory = './Models/rf model/Trained rf_models'
+trained_model_directory = './Models'
 n_repititions = 5
 seed = 40
 
