@@ -284,6 +284,7 @@ valid_loader = DataLoader(valid_data, batch_size = 512, shuffle = False)
 # Computationally redundant as I do not need to know how well the model performs at predicting LogP.
 # Follow paper to pretrain model for 1000 epochs instead of early stopping.
 
+start_timer = timer()
 run_loss = run_training(params = best_params, train_loader = train_loader, valid_loader = valid_loader, 
                               trained_model_path = os.path.join(model_directory, 'pretrained_1000_epochs_with_scheduler.pt'), 
                               epoch = EPOCH)
