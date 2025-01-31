@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch.nn import Linear, Sequential, ReLU
 from torch_geometric.nn import GINConv, TransformerConv
 from torch_geometric.nn import global_mean_pool, global_add_pool
+from timeit import default_timer as timer
 import os
 
 '''
