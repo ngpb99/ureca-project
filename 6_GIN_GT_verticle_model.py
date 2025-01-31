@@ -522,14 +522,14 @@ Args:
 4. 'GIN_GT_Combined'
 '''
 
-data_train = LipoFeatures(root = 'C:/Users/Ng Ping Boon/Desktop/URECA/Processed data/graph data/lipo_train', 
+data_train = LipoFeatures(root = './Processed data/graph data/lipo_train', 
                           filename = 'raw_data_train.csv')
-data_test = LipoFeatures(root = 'C:/Users/Ng Ping Boon/Desktop/URECA/Processed data/graph data/lipo_test', 
+data_test = LipoFeatures(root = './Processed data/graph data/lipo_test', 
                           filename = 'raw_data_test.csv')
 
 test_list = []
 for test_idx in range(len(data_test)):
-    test_list.append(torch.load(f'C:/Users/Ng Ping Boon/Desktop/URECA/Processed data/graph data/lipo_test/processed/data_{test_idx}.pt'))
+    test_list.append(torch.load(f'./Processed data/graph data/lipo_test/processed/data_{test_idx}.pt'))
 
 test_loader = DataLoader(test_list, batch_size = 256, shuffle = False)
 
@@ -547,9 +547,9 @@ for repeat in range(N_REPETITION):
         train_list = []
         valid_list = []
         for t_idx in train_idx:
-            train_list.append(torch.load(f'C:/Users/Ng Ping Boon/Desktop/URECA/Processed data/graph data/lipo_train/processed/data_{t_idx}.pt'))
+            train_list.append(torch.load(f'./Processed data/graph data/lipo_train/processed/data_{t_idx}.pt'))
         for v_idx in valid_idx:
-            valid_list.append(torch.load(f'C:/Users/Ng Ping Boon/Desktop/URECA/Processed data/graph data/lipo_train/processed/data_{v_idx}.pt'))
+            valid_list.append(torch.load(f'./Processed data/graph data/lipo_train/processed/data_{v_idx}.pt'))
         
         train_loader = DataLoader(train_list, batch_size = 256, shuffle = True)
         valid_loader = DataLoader(valid_list, batch_size = 256, shuffle = False)
