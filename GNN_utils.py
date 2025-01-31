@@ -161,6 +161,79 @@ class engine_no_edge:
         )
 
 
+class engine_classification:
+    def __init__(self, model, optimizer, device):
+        self.model = model
+        self.device = device
+        self.optimizer = optimizer
+
+    @staticmethod
+    def loss_fn(targets, outputs):
+        return nn.BCEWithLogitsLoss()(outputs, targets)
+
+    def train(self, data_loader):
+        self.model.train()
+        final_loss = 0
+        for data in data_loader:
+            data = data.to(self.device)
+            self.optimizer.zero_grad()
+            outputs = self.model(data.x, data.edge_attr, data.edge_index, data.batch)
+            loss = self.loss_fn(data.y.squeeze().float(), outputs.float())
+            loss.backward()
+            self.optimizer.step()
+            final_loss += loss.item()
+        return final_loss / len(data_loader)
+
+    def validate(self, data_loader):
+        self.model.eval()
+        final_loss = 0
+        with torch.no_grad():
+            for data in data_loader:
+                data = data.to(self.device)
+                outputs = self.model(data.x, data.edge_attr, data.edge_index, data.batch)
+                loss = self.loss_fn(data.y.squeeze().float(), outputs.float())
+                final_loss += loss.item()
+        return final_loss / len(data_loader)
+
+    def test(self, data_loader):
+        self.model.eval()
+        final_loss = 0
+        acc_total = 0
+        f1_total = 0
+        roc_auc_total = 0
+        with torch.no_grad():
+            for data in data_loader:
+                data = data.to(self.device)
+                outputs = self.model(data.x, data.edge_attr, data.edge_index, data.batch)
+                loss = self.loss_fn(data.y.squeeze().float(), outputs.float())
+                final_loss += loss.item()
+                
+                acc = accuracy_score(
+                   data.y.unsqueeze(1).to("cpu").detach().numpy(),
+                   torch.round(torch.sigmoid(outputs)).to("cpu").detach().numpy()
+                )
+                acc_total += acc
+
+                f1 = f1_score(
+                    data.y.unsqueeze(1).to("cpu").detach().numpy(),
+                    torch.round(torch.sigmoid(outputs)).to("cpu").detach().numpy()
+                )
+                f1_total += f1
+
+                roc_auc = roc_auc_score(
+                    data.y.unsqueeze(1).to("cpu").detach().numpy(),
+                    torch.round(torch.sigmoid(outputs)).to("cpu").detach().numpy()
+                )
+                roc_auc_total += roc_auc
+
+        return (
+            final_loss / len(data_loader),
+            acc_total / len(data_loader),
+            f1_total / len(data_loader),
+            roc_auc_total / len(data_loader),
+        )
+
+
 class LipoFeatures(Dataset): # Dataset class is a general class that contains a few functions to help convert mols to features.
     def __init__(self, root, filename, test=False, transform=None, pre_transform=None):
         """
@@ -325,4 +398,83 @@ class LogPFeatures(Dataset): #Dataset class is a general class that contains a f
         else:
             data = torch.load(os.path.join(self.processed_dir, 
                                   f'data_{idx}.pt'))        
+        return data
+
+
+class Bioassay(Dataset): 
+    def __init__(self, root, filename, test=False, transform=None, pre_transform=None):
+        """
+        root = Where the dataset should be stored. This folder is split
+        into raw_dir (downloaded dataset) and processed_dir (processed data). 
+        """
+        self.test = test
+        self.filename = filename
+        super(Bioassay, self).__init__(root, transform, pre_transform)
+
+        
+    @property
+    def raw_file_names(self):
+        """ If this file exists in raw_dir, the download is not triggered.
+            (The download func. is not implemented here)  
+        """
+        return self.filename
+    
+    @property
+    def processed_file_names(self):
+        """ If these files are found in raw_dir, processing is skipped"""
+        self.data = pd.read_csv(self.raw_paths[0]).reset_index()
+
+        if self.test:
+            return [f'data_test_{i}.pt' for i in list(self.data.index)]
+        else:
+            return [f'data_{i}.pt' for i in list(self.data.index)]
+        
+    def download(self):
+        pass
+
+    def process(self):
+        self.data = pd.read_csv(self.raw_paths[0]).reset_index()
+        featurizer = dc.feat.MolGraphConvFeaturizer(use_edges=True)
+
+        column_to_include_as_labels = []
+        for columns in self.data.columns:
+            if (columns != 'smiles') and (columns != 'index'):
+                column_to_include_as_labels.append(columns)
+        
+        for index, row in tqdm(self.data.iterrows(), total=self.data.shape[0]):
+            mol = Chem.MolFromSmiles(row["smiles"]) 
+            
+            f = featurizer._featurize(mol)
+            
+            data = f.to_pyg_graph()
+
+            data.y = self._get_label(row[column_to_include_as_labels])
+            
+            data.smiles = row["smiles"]
+            if self.test:
+                torch.save(data, 
+                    os.path.join(self.processed_dir, 
+                                 f'data_test_{index}.pt'))
+            else:
+                torch.save(data, 
+                    os.path.join(self.processed_dir, 
+                                 f'data_{index}.pt'))
+               
+    def _get_label(self, label):
+        label = np.asarray([label], dtype=np.int16)
+        return torch.tensor(label)
+
+    def len(self):
+        return self.data.shape[0]
+
+    def get(self, idx):
+        """ - Equivalent to __getitem__ in pytorch
+            - Is not needed for PyG's InMemoryDataset
+        """
+        if self.test:
+            data = torch.load(os.path.join(self.processed_dir, 
+                                 f'data_test_{idx}.pt'))
+        else:
+            data = torch.load(os.path.join(self.processed_dir, 
+                                 f'data_{idx}.pt'))        
         return data
