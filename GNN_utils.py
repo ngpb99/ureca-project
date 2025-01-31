@@ -85,6 +85,82 @@ class engine: # Controls the NN training and testing stages.
         ) # Performance of model with "human" comprehensible metrics
 
 
+class engine_no_edge:
+    def __init__(self, model, optimizer, device):
+        self.model = model
+        self.device = device
+        self.optimizer = optimizer
+
+    @staticmethod
+    def loss_fn(targets, outputs):
+        return nn.MSELoss()(outputs, targets)
+
+    def train(self, data_loader):
+        self.model.train()
+        final_loss = 0
+        for data in data_loader:
+            data = data.to(self.device)
+            self.optimizer.zero_grad()
+            outputs = self.model(data.x, data.edge_index, data.batch)
+            loss = self.loss_fn(data.y.unsqueeze(1).float(), outputs.float())
+            loss.backward()
+            self.optimizer.step()
+            final_loss += loss.item()
+        return final_loss / len(data_loader)
+
+    def validate(self, data_loader):
+        self.model.eval()
+        final_loss = 0
+        with torch.no_grad():
+            for data in data_loader:
+                data = data.to(self.device)
+                outputs = self.model(data.x, data.edge_index, data.batch)
+                loss = self.loss_fn(data.y.unsqueeze(1).float(), outputs.float())
+                final_loss += loss.item()
+        return final_loss / len(data_loader)
+
+    def test(self, data_loader):
+        self.model.eval()
+        rmse_total = 0
+        mae_total = 0
+        mse_total = 0
+        r2_total = 0
+        with torch.no_grad():
+            for data in data_loader:
+                data = data.to(self.device)
+                outputs = self.model(data.x, data.edge_index, data.batch)
+                loss = self.loss_fn(data.y.unsqueeze(1).float(), outputs.float())
+                loss = loss.item()
+                rmse = np.sqrt(loss)
+                
+                rmse_total += rmse
+
+                mae = mean_absolute_error(
+                    data.y.unsqueeze(1).to("cpu").detach().numpy(),
+                    outputs.to("cpu").detach().numpy()
+                )
+                mae_total += mae
+
+                mse = mean_squared_error(
+                    data.y.unsqueeze(1).to("cpu").detach().numpy(),
+                    outputs.to("cpu").detach().numpy()
+                )
+                mse_total += mse
+
+                r2 = r2_score(
+                    data.y.unsqueeze(1).to("cpu").detach().numpy(),
+                    outputs.to("cpu").detach().numpy()
+                )
+                r2_total += r2
+
+        return (
+            rmse_total / len(data_loader),
+            mae_total / len(data_loader),
+            mse_total / len(data_loader),
+            r2_total / len(data_loader),
+        )
+
+
 class LipoFeatures(Dataset): # Dataset class is a general class that contains a few functions to help convert mols to features.
     def __init__(self, root, filename, test=False, transform=None, pre_transform=None):
         """
